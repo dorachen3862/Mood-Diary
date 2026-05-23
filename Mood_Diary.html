@@ -1,0 +1,1485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Mood Diary</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/particles.js"></script>
+
+<style>
+* { box-sizing: border-box; }
+body {
+margin: 0;
+font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+height: 100vh;
+overflow: hidden;
+display: flex;
+background: linear-gradient(135deg, #1e3c72, #2a5298);
+}
+
+.left, .right {
+height: 100%;
+padding: 30px;
+overflow-y: auto;
+}
+
+#particles-js {
+position: fixed;
+inset: 0;
+z-index: 0;
+pointer-events: none;
+}
+
+.left, .right {
+position: relative;
+z-index: 1;
+pointer-events: auto;
+}
+
+
+.left {
+width: 40%;
+display: flex;
+flex-direction: column;
+background: rgba(255,255,255,0.1); 
+}
+
+.right {
+width: 60%;
+background: rgba(255,255,255,0.15);
+border-left: 1px solid #ddd;
+}
+
+.input-group { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
+select, textarea, .num-input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; font-size: 16px; }
+#customBtn { background: transparent; border: none; font-size: 24px; cursor: pointer; color: #555; }
+.nav-btn { background: #eee; border: 1px solid #ddd; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.nav-btn:hover { background: #ddd; }
+
+/* Modal Styles */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 9999; /* 🔥 提高 */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+}
+.modal-content { 
+  background-color: white; 
+  margin: 5% auto; 
+  padding: 25px; 
+  width: 450px; 
+  border-radius: 12px; 
+  max-height: 85vh;    
+  overflow-y: auto;  
+}
+.mood-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px dotted #eee; cursor: pointer; }
+.mood-item:hover { background: #f0f7f0; }
+
+.week-header { display: flex; justify-content: center; align-items: center; margin: 20px 0; gap: 20px; }
+#weekTitle { margin: 0; font-size: 1.1rem; white-space: nowrap; }
+
+/* Summary Boxes */
+.summary-box { margin-top: 15px; padding: 15px; background: white; border-radius: 8px; border-left: 5px solid #4CAF50; line-height: 1.4; }
+#sleepSummary { border-left-color: #3498db; margin-top: 10px; }
+#exerciseSummary { border-left-color: #9b59b6; margin-top: 10px; }
+#correlationSummary { border-left-color: #f39c12; margin-top: 10px; font-weight: bold; background: #fffdf0; }
+
+.main-btn { padding: 12px; border-radius: 8px; border: none; color: white; font-weight: bold; cursor: pointer; margin-top: 10px; }
+#saveBtn { background: #4CAF50; width: 100%; }
+#clearBtn { background: #e74c3c; font-size: 12px; margin-top: auto; opacity: 0.7; }
+
+/* Calendar Grid */
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+.calendar-date {
+aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+background: #f9f9f9; border-radius: 8px; font-size: 14px; cursor: pointer; transition: 0.2s;
+position: relative;
+}
+
+canvas {
+background: rgba(255,255,255,0.75);
+border-radius: 12px;
+padding: 10px;
+box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+
+.calendar-date:hover { background: #f0f0f0; border: 1px solid #ccc; }
+.calendar-date.today { border: 2px solid #4CAF50; }
+.calendar-date.hasMood { background: #e8f5e9; font-size: 20px; }
+.exercise-icon { position: absolute; bottom: 2px; right: 2px; font-size: 10px; }
+
+/* Dark Mode*/
+body.dark-mode {
+  background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+  color: #e0e6ed;
+}
+
+body.dark-mode .left {
+  background: rgba(0, 20, 40, 0.6);
+}
+
+body.dark-mode .right {
+  background: rgba(0, 25, 50, 0.7);
+  border-left: 1px solid rgba(255,255,255,0.1);
+}
+
+body.dark-mode input,
+body.dark-mode textarea,
+body.dark-mode select {
+  background: #1b2a38;
+  color: #fff;
+  border: 1px solid #3a506b;
+}
+
+body.dark-mode .summary-box {
+  background: #16222e;
+  color: #e0e6ed;
+}
+
+body.dark-mode canvas {
+  background: rgba(20, 40, 60, 0.8);
+}
+
+body.dark-mode .calendar-date {
+  background: #1b2a38;
+  color: #ddd;
+}
+
+body.dark-mode .calendar-date:hover {
+  background: #243447;
+}
+
+body.dark-mode .modal-content {
+  background: #1b2a38;
+  color: #fff;
+}
+body.dark-mode #correlationSummary {
+  background: #1a2430; 
+  color: #e0e6ed;
+}
+.calendar-day {
+  text-align: center;
+  font-weight: bold;
+  color: #000;
+}
+
+body.dark-mode .calendar-day {
+  color: #eee;
+}
+
+.modal.show {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.hidden {
+  display: none;
+}
+
+.modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  text-align: center;
+}
+
+
+</style>
+</head>
+<body>
+<div id="particles-js"></div>
+
+<div class="left">
+  <h2>How are you today?</h2>
+  <div class="input-group">
+    <select id="mood"></select>
+    <button id="customBtn" onclick="openMoodSettings()">⚙️</button>
+  </div>
+  
+  <div style="display:flex; gap:10px; margin-bottom:15px;">
+    <input type="text" id="sleep" class="num-input" placeholder="Sleep hrs (0-24)" 
+           oninput="this.value = this.value.replace(/[^0-9.]/g, ''); if(parseFloat(this.value) > 24) this.value = 24;">
+    <input type="text" id="exercise" class="num-input" placeholder="Exercise min" 
+           oninput="this.value = this.value.replace(/[^0-9]/g, '');">
+  </div>
+  
+  <textarea id="note" rows="3" placeholder="Notes for today..."></textarea>
+  <button id="saveBtn" class="main-btn">Save Today's Record</button>
+  
+  <div class="week-header">
+    <button class="nav-btn" onclick="changeDate(-1)">◀</button>
+    <h4 id="weekTitle"></h4>
+    <button class="nav-btn" onclick="changeDate(1)">▶</button>
+  </div>
+  
+  <div style="position:relative; display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
+  <h4 id="chartTitle">Weekly Overview</h4>
+  <div style="position:relative;">
+    <button onclick="toggleMenu()" style="border:none; background:none; cursor:pointer; font-size:20px;">⋮</button>
+    <div id="chartMenu" style="display:none; position:absolute; right:0; background:white; border:1px solid #ddd; border-radius:5px; box-shadow:0 2px 5px rgba(0,0,0,0.1); z-index:10;">
+      <div onclick="setChartMode('week')" style="padding:10px; cursor:pointer;">View Weekly</div>
+      <div onclick="setChartMode('day')" style="padding:10px; cursor:pointer;">View Today</div>
+    </div>
+  </div>
+</div>
+<canvas id="weeklyChart"></canvas>
+  
+  <div id="weeklySummary" class="summary-box">Record your moods.</div>
+  <div id="sleepSummary" class="summary-box">Sleep report...</div>
+  <div id="exerciseSummary" class="summary-box">Exercise report...</div>
+  <div id="correlationSummary" class="summary-box">The "Why": Analysis...</div>
+  
+  <div style="display: flex; gap: 10px; margin-top: auto;">
+    <button id="deleteTodayBtn" class="main-btn" style="background: #f39c12; flex: 1;">Delete Today's</button>
+    <button id="clearBtn" class="main-btn" style="background: #e74c3c; flex: 1;">Clear All</button>
+  </div>
+</div> <div class="right">
+  <h2 style="margin-top:0">Calendar</h2>
+  <div id="calendar"></div>
+</div>
+
+<div id="moodModal" class="modal">
+  <div class="modal-content">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h3>Mood Settings</h3>
+      <span style="cursor:pointer; font-size: 24px;" onclick="closeAllModals()">&times;</span>
+    </div>
+    <div id="moodList" style="margin: 10px 0; max-height: 180px; overflow-y: auto; border: 1px solid #eee; border-radius: 5px;"></div>
+    
+    <div style="background: #f9f9f9; padding: 15px; border-radius: 8px;">
+      <div style="display: flex; gap: 5px; margin-bottom: 8px;">
+        <input type="text" id="newEmojiInput" placeholder="Emoji" style="width: 60px; padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+        <input type="text" id="newMoodName" placeholder="Name" style="flex: 1; padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+        <input type="hidden" id="editingOldValue">
+      </div>
+      <div style="display: flex; gap: 5px;">
+        <select id="newMoodScore" style="flex: 1; padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+          <option value="5">5 (Great)</option><option value="4">4 (Good)</option><option value="3" selected>3 (Neutral)</option><option value="2">2 (Bad)</option><option value="1">1 (Awful)</option>
+        </select>
+        <button id="addMoodBtn" style="padding: 8px 15px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">Save Mood</button>
+      </div>
+    </div>
+    <button id="resetMoodBtn" style="width:100%; margin-top:10px; background:#95a5a6; color:white; border:none; padding:8px; border-radius:5px; cursor:pointer;">Reset to Defaults</button>
+    <hr style="margin: 20px 0; border: 0; border-top: 1px solid var(--border-color);">
+    <h3 style="margin-bottom: 15px;">Theme Settings</h3>
+    <div style="background: var(--panel-bg-right); padding: 15px; border-radius: 8px; display: flex; flex-direction: column; gap: 15px;">
+      
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span>Dark Mode</span>
+        <label class="switch">
+          <input type="checkbox" id="darkModeToggle">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="dateModal" class="modal">
+  <div class="modal-content">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h3 id="modalDateTitle">Date</h3>
+      <span style="cursor:pointer; font-size: 24px;" onclick="closeAllModals()">&times;</span>
+    </div>
+    
+  <div id="modalViewSection">
+    <div id="detailListContent"></div> 
+    <hr>
+    <div id="editActionArea" style="text-align: center; color: #888; padding: 10px;">
+      Click a record above to enable editing.
+    </div>
+    <div id="actionButtons" style="display:none;">
+    <button id="deleteEntryBtn" class="main-btn" style="background:#e74c3c; width: 100%; ">Delete</button>
+      <button id="editExistingBtn" class="main-btn" style="background: #3498db; width: 100%;">Edit Selected Record</button>
+      <button id="seeDetailBtn" class="main-btn" style="background: #95a5a6; width: 100%;">See Detail / Note</button>
+    </div>
+  </div>
+
+    <div id="modalEditSection" style="display:none;">
+      <select id="backfillMood"></select>
+      <input type="text" id="backfillSleep" class="num-input" placeholder="Sleep hours (0-24)" style="margin: 10px 0;">
+      <input type="text" id="backfillExercise" class="num-input" placeholder="Exercise mins" style="margin-bottom: 10px;">
+      <textarea id="backfillNote" rows="3" placeholder="How was this day?" style="margin-top:10px;"></textarea>
+      <button id="saveBackfillBtn" class="main-btn" style="background: #4CAF50; width: 100%;">Save</button>
+    </div>
+  </div>
+</div>
+<div id="sleepModal" class="modal hidden">
+  <div class="modal-content">
+    <p>You already logged sleep today 😴</p>
+    <p>What would you like to do?</p>
+
+    <button onclick="addSleep()">Add</button>
+    <button onclick="confirmOverwriteSleep()">Overwrite</button>
+    <button onclick="closeSleepModal()">Cancel</button>
+  </div>
+</div>
+
+<script>
+let currentMonth = new Date();
+let currentWeekOffset = 0;
+let currentViewDate = new Date(); 
+let weeklyChartInstance;
+let currentViewMode = 'week';
+let selectedBackfillDate = null;
+let pendingSleepValue = null;
+let currentSleepEntry = null;
+document.getElementById("deleteEntryBtn").onclick = () => {
+  let recorded = JSON.parse(localStorage.getItem("moods")) || [];
+
+  recorded = recorded.filter(e => e.id !== window.editingEntryId);
+
+  localStorage.setItem("moods", JSON.stringify(recorded));
+
+  closeAllModals();
+  generateCalendar();
+  generateWeeklyChart();
+};
+
+function saveSleep(newSleep) {
+  const today = new Date().toDateString();
+  let entries = JSON.parse(localStorage.getItem("moods")) || [];
+
+  let todayEntries = entries.filter(
+    e => new Date(e.date).toDateString() === today
+  );
+
+  let sleepEntry = todayEntries.find(e => e.sleep != null);
+
+  if (sleepEntry) {
+    pendingSleepValue = newSleep;
+    currentSleepEntry = sleepEntry;
+    openSleepModal();
+    return; 
+  }
+
+  entries.push({
+    id: Date.now(),
+    date: new Date().toISOString(),
+    sleep: newSleep
+  });
+
+  localStorage.setItem("moods", JSON.stringify(entries));
+  generateWeeklyChart();
+}
+function addSleep() {
+  let entries = JSON.parse(localStorage.getItem("moods")) || [];
+
+  const index = entries.findIndex(e => e.id === currentSleepEntry.id);
+  if (index !== -1) {
+    entries[index].sleep += pendingSleepValue;
+  }
+
+  localStorage.setItem("moods", JSON.stringify(entries));
+  closeSleepModal();
+  generateWeeklyChart();
+}
+
+function confirmOverwriteSleep() {
+  let entries = JSON.parse(localStorage.getItem("moods")) || [];
+
+  const index = entries.findIndex(e => e.id === currentSleepEntry.id);
+  if (index !== -1) {
+    entries[index].sleep = pendingSleepValue;
+  }
+
+  localStorage.setItem("moods", JSON.stringify(entries));
+
+  closeSleepModal();
+  generateWeeklyChart();
+}
+
+function openSleepModal() {
+  document.getElementById("sleepModal").classList.remove("hidden");
+}
+
+function closeSleepModal() {
+  document.getElementById("sleepModal").classList.add("hidden");
+}
+
+const defaultMoods = [
+  {value:"Happy", label:"😊 Happy", score: 5},
+  {value:"Calm", label:"😌 Calm", score: 4},
+  {value:"Anxious", label:"😟 Anxious", score: 3},
+  {value:"Sad", label:"😢 Sad", score: 2},
+  {value:"Angry", label:"😡 Angry", score: 1}
+];
+
+const moodSuggestions = {
+  high: [
+    "That's amazing! Keep spreading those positive vibes! ✨",
+    "You're doing great! Why not treat yourself to something nice today?",
+    "Wonderful! Remember this feeling and stay awesome! 🌟"
+  ],
+  neutral: [
+    "Balanced and steady. It's a good day to focus on your hobbies. ⚖️",
+    "Stay mindful. Maybe try some light reading or listen to music? 🎵",
+    "Taking it one step at a time is perfectly fine. Have a peaceful day!"
+  ],
+  low: [
+    "It's okay to have bad days. How about a short walk outside? 🚶‍♂️",
+    "Take a deep breath. Maybe grab a warm cup of coffee? ☕",
+    "You don't have to face everything alone. Try chatting with a friend? 💬"
+  ]
+};
+
+function getInsights(score, exerciseMinutes) {
+  const recorded = JSON.parse(localStorage.getItem("moods")) || [];
+  recorded.sort((a,b) => new Date(b.date) - new Date(a.date));
+
+  if (score === 5 && exerciseMinutes > 0) {
+    return "The dopamine from exercise is kicking in! Keep up this amazing momentum! 🔥";
+  }
+  if (recorded.length >= 3) {
+    const last3 = recorded.slice(0, 3);
+    const templates = getMoodTemplates();
+    const avgScore = last3.reduce((acc, curr) => {
+      const t = templates.find(tmp => tmp.value === curr.mood);
+      return acc + (t ? t.score : 3);
+    }, 0) / 3;
+    const totalEx = last3.reduce((acc, curr) => acc + (parseInt(curr.exercise) || 0), 0);
+    
+    if (avgScore < 3 && totalEx === 0) {
+      return "It seems like it's been a tough few days. Maybe a short 10-minute walk could help clear your mind? ☕";
+    }
+  }
+
+  let list = score >= 4 ? moodSuggestions.high : (score === 3 ? moodSuggestions.neutral : moodSuggestions.low);
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function getMoodTemplates() {
+  const saved = localStorage.getItem("customMoods");
+  return saved ? JSON.parse(saved) : [...defaultMoods];
+}
+
+function closeAllModals() {
+  document.querySelectorAll('.modal').forEach(m => 
+    m.classList.remove("show")
+  );
+  clearInputs(); 
+}
+
+function clearInputs() {
+  document.getElementById("newEmojiInput").value = "";
+  document.getElementById("newMoodName").value = "";
+  document.getElementById("editingOldValue").value = "";
+  document.getElementById("addMoodBtn").innerText = "Save Mood";
+}
+
+function handleDateClick(dateIsoString) {
+  const dateObj = new Date(dateIsoString);
+  const dateStr = dateObj.toDateString();
+  
+  window.selectedBackfillDate = dateIsoString; 
+
+  const recorded = JSON.parse(localStorage.getItem("moods")) || [];
+  const dailyEntries = recorded.filter(e => new Date(e.date).toDateString() === dateStr);
+  
+  const modalDateTitle = document.getElementById("modalDateTitle");
+  const detailListContent = document.getElementById("detailListContent");
+  const editActionArea = document.getElementById("editActionArea");
+  
+  modalDateTitle.innerText = dateStr;
+  detailListContent.innerHTML = ""; 
+
+  document.getElementById("modalViewSection").style.display = "block";
+  document.getElementById("modalEditSection").style.display = "none";
+  document.getElementById("actionButtons").style.display = "none";
+
+  if (dailyEntries.length > 0) {
+            const templates = getMoodTemplates();
+
+        dailyEntries.forEach(entry => {
+        const t = templates.find(tmp => tmp.value === entry.mood);
+        const emoji = t ? t.label.split(" ")[0] : "📝";
+
+        const div = document.createElement("div");
+        div.className = "mood-item";
+
+        div.innerHTML = `
+            <span>
+            ${emoji} ${entry.mood} 
+            (${new Date(entry.date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})})
+            </span>
+        `;
+
+        div.onclick = () => {
+            window.editingEntryId = entry.id;
+
+            document.querySelectorAll(".mood-item").forEach(el => {
+                el.style.background = "";
+            });
+
+            div.style.background = "#d4edda";
+
+            document.getElementById("actionButtons").style.display = "block";
+            document.getElementById("editActionArea").innerText = "Choose an action below:";
+            };
+
+        detailListContent.appendChild(div);
+        });
+    editActionArea.innerHTML = "Click a record above to edit.";
+  } else {
+    detailListContent.innerHTML = `<p style="text-align:center; color:#888;">No records for this day.</p>`;
+    editActionArea.innerHTML = `
+      <button class="main-btn" style="background: #4CAF50; width: 100%;" onclick="showEditSection()">
+        + Add Record for this Day
+      </button>
+    `;
+  }
+  
+  document.getElementById("dateModal").style.display = "block";
+}
+
+document.getElementById("editExistingBtn").onclick = () => {
+  const recorded = JSON.parse(localStorage.getItem("moods")) || [];
+  const entry = recorded.find(e => e.id === window.editingEntryId);
+
+  if (entry) {
+    showEditSection(entry);
+  }
+};
+document.getElementById("seeDetailBtn").onclick = () => {
+  const recorded = JSON.parse(localStorage.getItem("moods")) || [];
+  const entry = recorded.find(e => e.id === window.editingEntryId);
+
+  if (entry) {
+    alert(
+      `Mood: ${entry.mood}\n` +
+      `Sleep: ${entry.sleep || 0} hrs\n` +
+      `Exercise: ${entry.exercise || 0} min\n\n` +
+      `Note:\n${entry.note || "No note"}`
+    );
+  }
+};
+
+function showEditSection(entry = null) {
+  document.getElementById("modalViewSection").style.display = "none";
+  document.getElementById("modalEditSection").style.display = "block";
+  
+  const moodSelect = document.getElementById("backfillMood");
+  moodSelect.innerHTML = document.getElementById("mood").innerHTML;
+
+  if (entry) {
+    moodSelect.value = entry.mood;
+    document.getElementById("backfillSleep").value = entry.sleep || "";
+    document.getElementById("backfillExercise").value = entry.exercise || "";
+    document.getElementById("backfillNote").value = entry.note || "";
+  } else {
+    window.editingEntryId = null; 
+    moodSelect.value = "";
+    document.getElementById("backfillSleep").value = "";
+    document.getElementById("backfillExercise").value = "";
+    document.getElementById("backfillNote").value = "";
+  }
+}
+
+function populateBackfillMoods(selectedValue) {
+  const select = document.getElementById("backfillMood");
+  select.innerHTML = `<option value="">-- Choose Mood --</option>`;
+  getMoodTemplates().forEach(m => {
+    select.innerHTML += `<option value="${m.value}">${m.label}</option>`;
+  });
+  if (selectedValue) {
+    select.value = selectedValue;
+  }
+}
+
+document.getElementById("saveBackfillBtn").onclick = () => {
+  const mood = document.getElementById("backfillMood").value;
+  if (!mood) return alert("Select mood");
+  
+  let recorded = JSON.parse(localStorage.getItem("moods")) || [];
+  
+  if (window.editingEntryId) {
+    recorded = recorded.map(e => {
+      if (e.id === window.editingEntryId) {
+        return { 
+          ...e, 
+          mood: mood, 
+          sleep: document.getElementById("backfillSleep").value, 
+          exercise: document.getElementById("backfillExercise").value, 
+          note: document.getElementById("backfillNote").value 
+        };
+      }
+      return e;
+    });
+    window.editingEntryId = null; 
+  } else {
+    const d = new Date(window.selectedBackfillDate);
+    d.setHours(12, 0, 0, 0); 
+
+    const newEntry = { 
+        id: Date.now(), 
+        mood: mood, 
+        sleep: document.getElementById("backfillSleep").value, 
+        exercise: document.getElementById("backfillExercise").value, 
+        note: document.getElementById("backfillNote").value, 
+        date: d.toISOString()
+    };
+
+    recorded.push(newEntry);
+  }
+
+  localStorage.setItem("moods", JSON.stringify(recorded));
+  
+  closeAllModals();
+  generateCalendar(); 
+  generateWeeklyChart();
+  
+  alert("Record saved successfully!");
+};
+function saveToLocalStorage(mood, sleep, exercise, note) {
+  let recorded = JSON.parse(localStorage.getItem("moods")) || [];
+  
+  const newEntry = { 
+    id: Date.now(), 
+    mood: mood, 
+    sleep: sleep, 
+    exercise: exercise, 
+    note: note, 
+    date: new Date().toISOString() 
+  };
+  
+  recorded.push(newEntry);
+  localStorage.setItem("moods", JSON.stringify(recorded));
+  
+  const templates = getMoodTemplates();
+  const selectedMood = templates.find(t => t.value === mood);
+  const score = selectedMood ? selectedMood.score : 3;
+  
+  setTimeout(() => alert(getInsights(score, parseInt(exercise) || 0)), 300);
+  
+  generateCalendar(); 
+  generateWeeklyChart();
+}
+
+document.getElementById("saveBtn").onclick = () => {
+  const moodSelect = document.getElementById("mood");
+  const mood = moodSelect.value;
+  if(!mood) return alert("Select mood");
+
+  const recorded = JSON.parse(localStorage.getItem("moods")) || [];
+  const hasToday = recorded.some(e => new Date(e.date).toDateString() === new Date().toDateString());
+  
+  const sleepValue = document.getElementById("sleep").value;
+  const exerciseValue = document.getElementById("exercise").value;
+  const noteValue = document.getElementById("note").value;
+
+    if (sleepValue) {
+    saveToLocalStorage(mood, sleepValue, exerciseValue, noteValue);
+    }
+  
+  moodSelect.value = ""; 
+  document.getElementById("sleep").value = ""; 
+  document.getElementById("exercise").value = ""; 
+  document.getElementById("note").value = "";
+};
+
+function generateCalendar(){
+  const cal = document.getElementById("calendar");
+  cal.innerHTML = "";
+  const year = currentMonth.getFullYear(), month = currentMonth.getMonth();
+  const recorded = JSON.parse(localStorage.getItem("moods")) || [];
+  const templates = getMoodTemplates();
+
+  const header = document.createElement("div");
+  header.style.cssText = "display:flex; justify-content:center; align-items:center; gap:20px; margin-bottom:20px;";
+  header.innerHTML = `
+    <button class="nav-btn" onclick="currentMonth.setMonth(currentMonth.getMonth()-1);generateCalendar()">◀</button>
+    <h3>${currentMonth.toLocaleString('en-US', {month:'long', year:'numeric'})}</h3>
+    <button class="nav-btn" onclick="currentMonth.setMonth(currentMonth.getMonth()+1);generateCalendar()">▶</button>
+  `;
+
+  const grid = document.createElement("div");
+  grid.className = "calendar-grid";
+  ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].forEach(d => grid.innerHTML += `<div class="calendar-day">${d}</div>`);
+
+  const first = new Date(year, month, 1).getDay();
+  const last = new Date(year, month+1, 0).getDate();
+  for(let i=0; i<first; i++) grid.appendChild(document.createElement("div"));
+
+  for(let d=1; d<=last; d++){
+    const dateObj = new Date(year, month, d);
+    const cell = document.createElement("div");
+    cell.className = "calendar-date";
+    if(new Date().toDateString() === dateObj.toDateString()) cell.classList.add("today");
+
+    const dailyEntries = recorded.filter(e => new Date(e.date).toDateString() === dateObj.toDateString());
+    
+    if(dailyEntries.length > 0) {
+      cell.classList.add("hasMood");
+      
+      let totalScore = 0;
+      dailyEntries.forEach(e => {
+        const t = templates.find(tmp => tmp.value === e.mood);
+        totalScore += t ? t.score : 3;
+      });
+      const avgScore = Math.round(totalScore / dailyEntries.length);
+      
+      const displayMood = templates.find(t => t.score === avgScore) || templates[2];
+      
+      cell.innerHTML = `<span>${d}</span><span>${displayMood ? displayMood.label.split(" ")[0] : "📝"}</span>`;
+      
+      if(dailyEntries.some(e => parseInt(e.exercise) > 0)) {
+        cell.innerHTML += `<span class="exercise-icon">🏃</span>`;
+      }
+    } else { 
+      cell.innerText = d; 
+    }
+    cell.onclick = () => handleDateClick(dateObj.toISOString());
+    grid.appendChild(cell);
+  }
+  cal.append(header, grid);
+}
+
+function setChartMode(mode) {
+  currentViewMode = mode;
+  toggleMenu(); 
+  generateWeeklyChart(); 
+}
+
+function generateWeeklyChart() {
+  const recorded = JSON.parse(localStorage.getItem("moods")) || [];
+  const templates = getMoodTemplates();
+  
+  const now = new Date(currentViewDate);
+  const chartTitleElement = document.getElementById('chartTitle');
+
+  let moodData = [], sleepData = [], exData = [], labels = [];
+  let stats = { moodSum: 0, moodCount: 0, sleepSum: 0, sleepCount: 0, exSum: 0, exCount: 0 };
+  let exMoodSum = 0, exDays = 0, noExMoodSum = 0, noExDays = 0;
+
+  if (currentViewMode === 'week') {
+    chartTitleElement.innerText = 'Weekly Overview';
+
+    const start = new Date(now);
+    start.setDate(now.getDate() - now.getDay() + currentWeekOffset * 7);
+    start.setHours(0, 0, 0, 0);
+    
+    document.getElementById("weekTitle").innerText = `${start.toLocaleDateString()} - ${new Date(start.getTime() + 6 * 86400000).toLocaleDateString()}`;
+    labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start); 
+      d.setDate(start.getDate() + i);
+      const dailyEntries = recorded.filter(e => new Date(e.date).toDateString() === d.toDateString());
+      
+      if (dailyEntries.length > 0) {
+        let dayMoodSum = 0, dayMoodCount = 0;
+        let daySleepSum = 0, daySleepCount = 0;
+        let dayExSum = 0, dayExCount = 0;
+
+        dailyEntries.forEach(entry => {
+          const t = templates.find(tmp => tmp.value === entry.mood);
+          if (t) { dayMoodSum += t.score; dayMoodCount++; }
+          if (entry.sleep !== "" && entry.sleep !== null && entry.sleep !== undefined) {
+            daySleepSum += parseFloat(entry.sleep);
+            daySleepCount++;
+          }
+          if (entry.exercise !== "" && entry.exercise !== null && entry.exercise !== undefined) {
+            dayExSum += parseInt(entry.exercise);
+            dayExCount++;
+          }
+        });
+
+        const finalMood = dayMoodCount > 0 ? (dayMoodSum / dayMoodCount) : null;
+        const finalSleep = daySleepCount > 0 ? (daySleepSum / daySleepCount) : null;
+        const finalEx = dayExCount > 0 ? dayExSum : null;
+
+        moodData.push(finalMood);
+        sleepData.push(finalSleep);
+        exData.push(finalEx);
+        
+        if (finalMood !== null) { stats.moodSum += finalMood; stats.moodCount++; }
+        if (finalSleep !== null) { stats.sleepSum += finalSleep; stats.sleepCount++; }
+        if (finalEx !== null) { 
+          stats.exSum += finalEx; stats.exCount++; 
+          if(finalEx > 0) { exMoodSum += (finalMood || 0); exDays++; }
+          else { noExMoodSum += (finalMood || 0); noExDays++; }
+        }
+      } else {
+        moodData.push(null); sleepData.push(null); exData.push(null);
+      }
+    }
+  } else {
+    const todayStr = new Date().toDateString();
+    const viewDateStr = now.toDateString();
+
+    if (todayStr === viewDateStr) {
+      chartTitleElement.innerText = "Today's Data";
+    } else {
+      chartTitleElement.innerText = `Data for ${now.toLocaleDateString()}`;
+    }
+
+    document.getElementById("weekTitle").innerText = viewDateStr;
+    labels = Array.from({ length: 24 }, (_, i) => `${i}:00`);
+    moodData = new Array(24).fill(null);
+    sleepData = new Array(24).fill(null);
+    exData = new Array(24).fill(null);
+
+    const todayEntries = recorded.filter(e => new Date(e.date).toDateString() === viewDateStr);
+    todayEntries.forEach(entry => {
+      const hour = new Date(entry.date).getHours();
+      const t = templates.find(tmp => tmp.value === entry.mood);
+      moodData[hour] = t ? t.score : null;
+      sleepData[hour] = (entry.sleep !== "" && entry.sleep !== null) ? parseFloat(entry.sleep) : null;
+      exData[hour] = (entry.exercise !== "" && entry.exercise !== null) ? parseInt(entry.exercise) : null;
+      
+      // 同步更新當天 Summary 統計資料
+      if (moodData[hour] !== null) { stats.moodSum += moodData[hour]; stats.moodCount++; }
+      if (sleepData[hour] !== null) { stats.sleepSum += sleepData[hour]; stats.sleepCount++; }
+      if (exData[hour] !== null) { stats.exSum += exData[hour]; stats.exCount++; }
+    });
+  }
+
+  // 渲染圖表
+  const ctx = document.getElementById("weeklyChart").getContext("2d");
+  if (weeklyChartInstance) weeklyChartInstance.destroy();
+  weeklyChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: 'Mood Score', data: moodData, borderColor: '#4CAF50', tension: 0.3, yAxisID: 'y' },
+        { label: 'Sleep hrs', data: sleepData, borderColor: '#3498db', tension: 0.3, yAxisID: 'y' },
+        { label: 'Exercise min', data: exData, borderColor: '#9b59b6', backgroundColor: 'rgba(155,89,182,0.1)', fill: true, tension: 0.3, yAxisID: 'y1' }
+      ]
+    },
+    options: {
+    plugins: {
+
+        tooltip: {
+        callbacks: {
+            label: function(context) {
+
+            let label = context.dataset.label || '';
+            let value = context.parsed.y;
+
+            if (context.dataset.label === 'Exercise min' && value != null) {
+
+                const hours = Math.floor(value / 60);
+                const mins = value % 60;
+
+                if (hours > 0 && mins > 0) {
+                return `${label}: ${hours}h ${mins}min`;
+                } 
+                else if (hours > 0) {
+                return `${label}: ${hours}h`;
+                } 
+                else {
+                return `${label}: ${mins} min`;
+                }
+            }
+
+            return `${label}: ${value}`;
+            }
+        }
+        },
+
+        legend: {
+        labels: {
+            color: document.body.classList.contains("dark-mode") ? "#eee" : "#333"
+        }
+        }
+    },
+
+    scales: {
+        x: {
+        ticks: {
+            color: document.body.classList.contains("dark-mode") ? "#eee" : "#333"
+        }
+        },
+        y: { 
+        beginAtZero: true, 
+        suggestedMax: 5, 
+        position: 'left',
+        ticks: {
+            precision: 0,
+            color: document.body.classList.contains("dark-mode") ? "#eee" : "#333"
+        }
+        },
+        y1: {
+        beginAtZero: true,
+        position: 'right',
+        grid: { drawOnChartArea: false },
+
+        suggestedMax: function(context) {
+            const data = context.chart.data.datasets[2].data.filter(v => v != null);
+
+            if (data.length === 0) return 60;
+
+            const max = Math.max(...data);
+            return Math.ceil(max / 10) * 10;
+        },
+
+        ticks: {
+            stepSize: 30,
+            callback: function(value) {
+                const hours = Math.floor(value / 60);
+                const mins = value % 60;
+
+                if (hours > 0 && mins > 0) return `${hours}h ${mins}m`;
+                if (hours > 0) return `${hours}h`;
+                return `${mins}m`;
+            }
+        }
+        }
+    }
+    }
+  });
+
+  const periodText = currentViewMode === 'week' ? "period" : "day";
+  const welcomeMsg = currentViewMode === 'week' ? "week" : "day";
+// 1. Mood Summary
+  const avgMood = stats.moodSum / (stats.moodCount || 1);
+  const summaryDiv = document.getElementById("weeklySummary");
+  if (stats.moodCount === 0) {
+    summaryDiv.innerText = "No mood records for this period.";
+  } else {
+    let moodMsg = avgMood >= 4 ? "🌟 Wonderful week! Your mood has been consistently positive. Keep it up!" : (avgMood >= 2.5 ? "⚖️ A mixed week. It's normal to have ups and downs. Stay balanced." : "💪 A tough week. Remember that bad days are temporary. Be kind to yourself.");
+    summaryDiv.innerHTML = `<strong>Avg Mood Score: ${avgMood.toFixed(1)}</strong><br>${moodMsg}`;
+  }
+
+  // 2. Sleep Summary
+  const avgSleep = stats.sleepSum / (stats.sleepCount || 1);
+  const sleepDiv = document.getElementById("sleepSummary");
+  if (stats.sleepCount === 0) {
+    sleepDiv.innerText = "No sleep records for this period.";
+  } else {
+    let sleepMsg = "";
+    if (avgSleep >= 6 && avgSleep <= 8) sleepMsg = "Excellent sleep habits! 😴";
+    else if (avgSleep > 8) sleepMsg = "Sleeping a bit much! ☁️";
+    else sleepMsg = "Need more sleep! ☕ Your body needs more rest.";
+    sleepDiv.innerHTML = `<strong>Avg Sleep: ${avgSleep.toFixed(1)} hrs</strong><br>${sleepMsg}`;
+  }
+
+  // 3. Exercise Summary
+  const avgEx = stats.exSum / (stats.exCount || 1);
+  const exDiv = document.getElementById("exerciseSummary");
+  if (stats.exCount === 0) {
+    exDiv.innerText = `No exercise records for this ${periodText}.`;
+  } else {
+    let exMsg = "";
+    if (avgEx >= 30) exMsg = "Amazing activity level! Your body thanks you. 🏃‍♂️🔥";
+    else if (avgEx >= 15) exMsg = "Good job! You're staying active and healthy. ✨";
+    else exMsg = "Every bit counts! Try to add some movement tomorrow. 👟";
+    
+    const exLabel = currentViewMode === 'week' ? "Avg Exercise" : "Total Exercise";
+    exDiv.innerHTML = `<strong>${exLabel}: ${avgEx.toFixed(0)} mins</strong><br>${exMsg}`;
+  }
+
+const totalRecordedDays = exDays + noExDays;
+
+let correlationText = "Need more data to see correlation (at least 2 days).";
+
+if (totalRecordedDays >= 2) {
+  if (exDays > 0 && noExDays > 0) {
+    if (diff > 0.1) { 
+      correlationText = `Data shows: Your mood is **${diff.toFixed(1)} pts higher** on exercise days! 🚀`;
+    } else if (diff > -0.1 && diff <= 0.1) {
+      correlationText = `Your mood is stable regardless of exercise. Consistency is key!`;
+    } else {
+      correlationText = `No direct mood boost seen yet, but movement is great for your heart!`;
+    }
+  } else if (exDays >= 2) {
+    correlationText = "You've been exercising consistently! Keep tracking to see how it affects you long-term.";
+  } else if (noExDays >= 2) {
+    correlationText = "Try adding a 10-min walk to see if it gives your mood a little boost! 👟";
+  }
+} else if (currentViewMode === 'day' && stats.exSum > 0) {
+  correlationText = "You exercised today! Notice how it affects your energy levels. ✨";
+}
+
+document.getElementById("correlationSummary").innerHTML = `<strong>The "Why":</strong> ${correlationText}`;
+}
+
+function openMoodSettings() {
+    renderModalList();
+  document.getElementById("moodModal").classList.add("show");
+}
+
+function renderModalList() {
+  const listDiv = document.getElementById("moodList");
+  listDiv.innerHTML = "";
+  getMoodTemplates().forEach(m => {
+    const item = document.createElement("div");
+    item.className = "mood-item";
+    item.onclick = () => {
+      document.getElementById("newEmojiInput").value = m.label.split(" ")[0];
+      document.getElementById("newMoodName").value = m.value;
+      document.getElementById("newMoodScore").value = m.score;
+      document.getElementById("editingOldValue").value = m.value;
+      document.getElementById("addMoodBtn").innerText = "Update & Sync";
+    };
+    item.innerHTML = `<span>${m.label}</span><span style="color:#4CAF50; font-weight:bold;">${m.score} pts</span>`;
+    listDiv.appendChild(item);
+  });
+}
+
+function migrateMoodData(oldName, newName) {
+  let recorded = JSON.parse(localStorage.getItem("moods")) || [];
+  recorded = recorded.map(entry => entry.mood === oldName ? { ...entry, mood: newName } : entry);
+  localStorage.setItem("moods", JSON.stringify(recorded));
+}
+
+document.getElementById("addMoodBtn").onclick = function() {
+  const emoji = document.getElementById("newEmojiInput").value.trim() || "📝";
+  const newName = document.getElementById("newMoodName").value.trim();
+  const score = parseInt(document.getElementById("newMoodScore").value);
+  const oldVal = document.getElementById("editingOldValue").value;
+  if(!newName) return alert("Enter name");
+  
+  let moods = getMoodTemplates();
+  const newMood = { value: newName, label: `${emoji} ${newName}`, score: score };
+  
+  if(oldVal) { 
+    migrateMoodData(oldVal, newName); 
+    const idx = moods.findIndex(m => m.value === oldVal); 
+    moods[idx] = newMood; 
+  } else { 
+    moods.push(newMood); 
+  }
+  
+  localStorage.setItem("customMoods", JSON.stringify(moods));
+  closeAllModals(); loadMoodOptions(); generateWeeklyChart(); generateCalendar();
+};
+
+document.getElementById("resetMoodBtn").onclick = () => {
+  if(confirm("Reset moods to defaults?")) {
+    localStorage.removeItem("customMoods");
+    renderModalList(); loadMoodOptions(); generateWeeklyChart(); generateCalendar();
+  }
+};
+
+function loadMoodOptions(){
+  const select = document.getElementById("mood");
+  const currentVal = select.value;
+  select.innerHTML = `<option value="">-- Choose Mood --</option>`;
+  getMoodTemplates().forEach(m => {
+    select.innerHTML += `<option value="${m.value}">${m.label}</option>`;
+  });
+  select.value = currentVal;
+}
+
+function changeDate(offset) {
+  if (currentViewMode === 'week') {
+    currentWeekOffset += offset;
+  } else {
+    currentViewDate.setDate(currentViewDate.getDate() + offset);
+  }
+  generateWeeklyChart();
+}
+document.getElementById("clearBtn").onclick = () => { if(confirm("Delete all history?")) { localStorage.removeItem("moods"); generateCalendar(); generateWeeklyChart(); } };
+document.getElementById("deleteTodayBtn").onclick = () => {
+  if (confirm("Are you sure you want to delete ALL records for TODAY?")) {
+    let recorded = JSON.parse(localStorage.getItem("moods")) || [];
+    const todayStr = new Date().toDateString();
+    
+    const filtered = recorded.filter(e => new Date(e.date).toDateString() !== todayStr);
+    
+    localStorage.setItem("moods", JSON.stringify(filtered));
+    
+    generateCalendar();
+    generateWeeklyChart();
+    alert("Today's records have been deleted.");
+  }
+};
+window.onload = () => { 
+  loadMoodOptions(); 
+  generateCalendar(); 
+  generateWeeklyChart(); 
+  particlesJS("particles-js", {
+  particles: {
+    number: { value: 80 },
+    size: { value: 3 }
+  },
+  interactivity: {
+    events: {
+      onhover: {
+        enable: true,
+        mode: "grab"
+      },
+      onclick: {
+        enable: true,
+        mode: "repulse"
+      }
+    },
+    modes: {
+      repulse: {
+        distance: 150,
+        duration: 0.4
+      }
+    }
+  }
+});
+};
+</script>
+
+
+<style>
+  .settings-section { margin-top: 20px; padding-top: 15px; border-top: 2px solid #eee; }
+  .toggle-group { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 20px; }
+  .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+  input:checked + .slider { background-color: #4CAF50; }
+  input:checked + .slider:before { transform: translateX(20px); }
+</style>
+
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+  const modalContent = document.querySelector('#moodModal .modal-content');
+  const darkToggle = document.getElementById("darkModeToggle");
+
+if (localStorage.getItem("darkMode") === "on") {
+  document.body.classList.add("dark-mode");
+  darkToggle.checked = true;
+}
+
+darkToggle.addEventListener("change", () => {
+  if (darkToggle.checked) {
+    document.body.classList.add("dark-mode");
+    localStorage.setItem("darkMode", "on");
+  } else {
+    document.body.classList.remove("dark-mode");
+    localStorage.setItem("darkMode", "off");
+  }
+
+  generateWeeklyChart(); 
+});
+  
+  const settingsHTML = `
+    <div class="settings-section">
+      <h3>Notification Settings</h3>
+      <div class="toggle-group">
+        <span>Enable Daily Reminder</span>
+        <label class="switch">
+          <input type="checkbox" id="notifyToggle">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div id="timeSettingArea" style="display:none;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span>Remind me at:</span>
+          <input type="time" id="notifyTime" style="padding:8px; border-radius:5px; border:1px solid #ccc;">
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h3>Report & Export</h3>
+      <div class="toggle-group">
+        <span>Hide Notes in Report</span>
+        <label class="switch">
+          <input type="checkbox" id="hideNotesToggle">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <button id="printReportBtn" style="width:100%; padding:10px; margin-top:10px; cursor:pointer; background:#4CAF50; color:white; border:none; border-radius:5px; font-weight:bold;">
+        Print Weekly Report 🖨️
+      </button>
+    </div>
+  `;
+
+  const resetBtn = document.getElementById('resetMoodBtn');
+  resetBtn.insertAdjacentHTML('beforebegin', settingsHTML);
+
+  const savedConfig = JSON.parse(localStorage.getItem('notifyConfig')) || { enabled: false, time: "20:00" };
+  const toggle = document.getElementById('notifyToggle');
+  const timeInput = document.getElementById('notifyTime');
+  const timeArea = document.getElementById('timeSettingArea');
+
+  toggle.checked = savedConfig.enabled;
+  timeInput.value = savedConfig.time;
+  if(toggle.checked) timeArea.style.display = 'block';
+
+  toggle.onchange = async () => {
+    if (toggle.checked) {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        alert('Please allow notification permission.');
+        toggle.checked = false;
+        return;
+      }
+      timeArea.style.display = 'block';
+    } else {
+      timeArea.style.display = 'none';
+    }
+    saveConfig();
+  };
+  timeInput.onchange = saveConfig;
+
+  function saveConfig() {
+    localStorage.setItem('notifyConfig', JSON.stringify({ enabled: toggle.checked, time: timeInput.value }));
+  }
+
+  document.getElementById('printReportBtn').onclick = () => {
+    const recorded = JSON.parse(localStorage.getItem("moods")) || [];
+    const templates = getMoodTemplates(); 
+    const hideNotes = document.getElementById('hideNotesToggle').checked;
+    
+    const now = new Date(currentViewDate);
+    const start = new Date(now);
+    start.setDate(now.getDate() - now.getDay() + currentWeekOffset * 7);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+
+    const weeklyEntries = recorded.filter(e => {
+      const d = new Date(e.date);
+      return d >= start && d <= end;
+    }).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    let printHTML = `
+      <html>
+      <head>
+        <title>Weekly Mood Diary Report</title>
+        <style>
+  body { 
+    font-family: 'Segoe UI', sans-serif; 
+    padding: 40px; 
+    color: #2c2c2c; 
+    background: #ffffff;
+  }
+
+  h1 { 
+    color: #1f2d3d; 
+    border-bottom: 2px solid #d0d7de; 
+    padding-bottom: 10px;
+    font-weight: 600;
+  }
+
+  .period { 
+    font-size: 1.05em; 
+    margin-bottom: 30px; 
+    color: #6b7280; 
+  }
+
+  .day-block { 
+    margin-bottom: 25px; 
+    border-bottom: 1px solid #e5e7eb; 
+    padding-bottom: 15px; 
+  }
+
+  .day-title { 
+    font-size: 1.2em; 
+    color: #111827; 
+    margin-bottom: 10px; 
+    background: #f3f4f6; 
+    padding: 6px 10px; 
+    border-radius: 6px; 
+  }
+
+  .entry { 
+    margin: 10px 0 10px 20px; 
+    padding: 10px; 
+    border-left: 3px solid #6b7280; 
+    background: #fafafa;
+  }
+
+  .time { 
+    font-weight: bold; 
+    color: #374151; 
+    margin-right: 10px; 
+  }
+
+  .mood { 
+    font-size: 1.05em; 
+    font-weight: 600; 
+    color: #111827;
+  }
+
+  .stats { 
+    font-size: 0.9em; 
+    color: #6b7280; 
+    margin-top: 5px; 
+  }
+
+  .note { 
+    margin-top: 8px; 
+    font-style: italic; 
+    background: #f9fafb; 
+    padding: 8px; 
+    border-radius: 6px; 
+    border: 1px solid #e5e7eb;
+    color: #374151;
+  }
+</style>
+      </head>
+      <body>
+        <h1>Mood Diary Report</h1>
+        <div class="period">Report Period: ${start.toLocaleDateString()} - ${end.toLocaleDateString()}</div>
+    `;
+
+    if (weeklyEntries.length === 0) {
+      printHTML += `<p>No records found for this week.</p>`;
+    } else {
+      let lastDate = "";
+      weeklyEntries.forEach(e => {
+        const d = new Date(e.date);
+        const dateStr = d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const t = templates.find(tmp => tmp.value === e.mood);
+
+        if (dateStr !== lastDate) {
+          printHTML += `<div class="day-title">${dateStr}</div>`;
+          lastDate = dateStr;
+        }
+
+        printHTML += `
+          <div class="entry">
+            <div><span class="time">${timeStr}</span><span class="mood">${t ? t.label : e.mood}</span></div>
+            <div class="stats">Sleep: ${e.sleep || '--'} hrs | Exercise: ${e.exercise || '--'} mins</div>
+            ${(!hideNotes && e.note) ? `<div class="note"><strong>Note:</strong> ${e.note}</div>` : ""}
+          </div>
+        `;
+      });
+    }
+
+    printHTML += `</body></html>`;
+
+    // 執行列印
+    const win = window.open('', '_blank');
+    win.document.write(printHTML);
+    win.document.close();
+    setTimeout(() => { win.print(); win.close(); }, 500);
+  };
+});
+
+function toggleMenu() {
+  const menu = document.getElementById('chartMenu');
+  menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+}
+
+document.getElementById('printReportBtn').onclick = () => {
+  const recorded = JSON.parse(localStorage.getItem("moods")) || [];
+  const templates = getMoodTemplates();
+  const hideNotes = document.getElementById('hideNotesToggle').checked;
+  
+  const now = new Date(currentViewDate);
+  const start = new Date(now);
+  start.setDate(now.getDate() - now.getDay() + currentWeekOffset * 7);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+
+  const weeklyEntries = recorded.filter(e => {
+    const d = new Date(e.date);
+    return d >= start && d <= end;
+  }).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  let printHTML = `
+    <html>
+    <head>
+      <title>Weekly Mood Report</title>
+      <style>
+        body { font-family: sans-serif; padding: 20px; line-height: 1.6; }
+        h1 { color: #4CAF50; border-bottom: 2px solid #eee; }
+        .date-section { margin-top: 20px; padding: 10px; background: #f9f9f9; }
+        .entry-item { border-left: 4px solid #4CAF50; margin: 10px 0; padding-left: 15px; page-break-inside: avoid; }
+        .mood-tag { font-weight: bold; }
+        .note { color: #555; font-style: italic; font-size: 0.9em; margin-top: 5px; }
+        .stats { margin-top: 5px; font-size: 0.85em; color: #888; }
+        @media print { .no-print { display: none; } }
+      </style>
+    </head>
+    <body>
+      <h1>Weekly Mood Report</h1>
+      <p><strong>Period:</strong> ${start.toLocaleDateString()} - ${end.toLocaleDateString()}</p>
+  `;
+
+  if (weeklyEntries.length === 0) {
+    printHTML += `<p>No records found for this week.</p>`;
+  } else {
+    let lastDate = "";
+    weeklyEntries.forEach(e => {
+      const entryDate = new Date(e.date).toLocaleDateString();
+      const entryTime = new Date(e.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      const t = templates.find(tmp => tmp.value === e.mood);
+      
+      if (entryDate !== lastDate) {
+        printHTML += `<div class="date-section"><h3>${entryDate}</h3></div>`;
+        lastDate = entryDate;
+      }
+
+      printHTML += `
+        <div class="entry-item">
+          <div>
+            <span class="mood-tag">${t ? t.label : e.mood}</span> 
+            <small style="color:#aaa"> at ${entryTime}</small>
+          </div>
+          <div class="stats">
+            Sleep: ${e.sleep || '--'} hrs | Exercise: ${e.exercise || '--'} mins
+          </div>
+          ${(!hideNotes && e.note) ? `<div class="note">Note: ${e.note}</div>` : ""}
+        </div>
+      `;
+    });
+  }
+
+  printHTML += `
+      <footer style="margin-top: 50px; border-top: 1px solid #ccc; font-size: 0.8em; text-align: center;">
+        Generated by Gemini Mood Diary | ${new Date().toLocaleString()}
+      </footer>
+    </body>
+    </html>
+  `;
+
+  const printWindow = window.open('', '_blank');
+  printWindow.document.write(printHTML);
+  printWindow.document.close();
+  printWindow.focus();
+  
+  setTimeout(() => {
+    printWindow.print();
+    printWindow.close();
+  }, 500);
+};
+
+function saveSleep(newSleep) {
+  const today = new Date().toDateString();
+  let entries = JSON.parse(localStorage.getItem("moods")) || [];
+
+  let todayEntries = entries.filter(
+    e => new Date(e.date).toDateString() === today
+  );
+
+  let sleepEntry = todayEntries.find(e => e.sleep != null);
+
+  if (sleepEntry) {
+    const confirmOverwrite = confirm(
+      "You already have a sleep record for today 😴\n\nDo you want to overwrite it?"
+    );
+
+    if (!confirmOverwrite) return;
+
+    sleepEntry.sleep = newSleep;
+
+  } else {
+    entries.push({
+      id: Date.now(),
+      date: new Date().toISOString(),
+      sleep: newSleep
+    });
+  }
+
+  localStorage.setItem("moods", JSON.stringify(entries));
+
+  generateWeeklyChart();
+}
+</script>
+</body>
+</html>
+
+
